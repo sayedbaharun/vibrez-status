@@ -1,0 +1,8 @@
+[
+  {
+    "date": "2026-11-09",
+    "source": "example",
+    "title": "Example entry — replace me",
+    "detail": "This is an example bot update, not a real event. Add a new object to data/updates.json with a date, source, title, and detail, then deploy. Delete this entry when you no longer need the example."
+  }
+]
