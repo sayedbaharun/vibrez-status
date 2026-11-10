@@ -10,7 +10,9 @@ import type { BotUpdate } from "@/lib/updates";
 import { VIEWS, type ViewId } from "@/lib/views";
 import { EmptyNote, IssueList } from "./issue-list";
 import { Overview } from "./overview";
+import { LogOut } from "lucide-react";
 import { RefreshButton } from "./refresh-button";
+import { SectionNav } from "./section-nav";
 import { ThemeToggle } from "./theme-toggle";
 import { Timeline } from "./timeline";
 import { UpdatesFeed } from "./updates-feed";
@@ -34,10 +36,10 @@ export function StatusBoard({
       >
         Skip to the board
       </a>
-      <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
+      <header className="safe-x mx-auto max-w-3xl pt-[calc(env(safe-area-inset-top)+0.75rem)]">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
               <h1 className="font-serif text-3xl leading-none tracking-tight">Vibrez</h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 Status · Europe/London
@@ -51,14 +53,20 @@ export function StatusBoard({
                 )}
               </p>
             </div>
-            <div className="flex flex-wrap justify-end gap-2">
+            <div className="flex shrink-0 gap-2">
               <form action={refreshBoard}>
                 <RefreshButton />
               </form>
               <ThemeToggle />
               <form action={logout}>
-                <Button type="submit" variant="outline" className="h-11 px-3">
-                  Log out
+                <Button
+                  type="submit"
+                  variant="outline"
+                  className="size-11 p-0 sm:w-auto sm:px-3"
+                  aria-label="Log out"
+                >
+                  <LogOut className="size-5" aria-hidden="true" />
+                  <span className="hidden sm:inline">Log out</span>
                 </Button>
               </form>
             </div>
@@ -74,7 +82,12 @@ export function StatusBoard({
               ) : null}
             </p>
           ) : null}
-          <nav aria-label="Sections" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+        </div>
+      </header>
+
+      <div className="sticky top-0 z-20 mt-2 border-b border-border bg-background/90 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+        <div className="safe-x mx-auto max-w-3xl">
+          <SectionNav>
             {VIEWS.map((item) => {
               const current = item.id === view;
               const count = countFor(item.id, board);
@@ -94,11 +107,11 @@ export function StatusBoard({
                 </Link>
               );
             })}
-          </nav>
+          </SectionNav>
         </div>
-      </header>
+      </div>
 
-      <main id="board" className="mx-auto max-w-3xl px-4 py-6 pb-16">
+      <main id="board" className="safe-x safe-bottom mx-auto max-w-3xl pt-6">
         {load.kind === "ready" && load.sample ? (
           <p
             role="status"

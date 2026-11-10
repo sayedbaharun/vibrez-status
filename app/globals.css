@@ -164,3 +164,21 @@ html[data-theme="dark"] {
     @apply font-sans;
   }
 }
+/* Keep content clear of the iPhone notch/Dynamic Island (landscape) and home bar. */
+@utility safe-x {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+@utility safe-bottom {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+}
+
+/* Fade the right edge of the section tabs so it is obvious they scroll. */
+@utility scroll-fade-x {
+  mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

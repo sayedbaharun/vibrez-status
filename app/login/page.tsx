@@ -31,7 +31,7 @@ async function LoginForm({
   const configured = Boolean(process.env.SITE_PASSWORD);
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-10">
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center safe-x py-10">
       <div className="mb-6 flex items-start justify-between gap-3">
         <div>
           <h1 className="font-serif text-4xl tracking-tight">Vibrez</h1>

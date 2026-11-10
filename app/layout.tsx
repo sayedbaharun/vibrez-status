@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Instrument_Sans, Newsreader } from "next/font/google";
 import "./globals.css";
 
@@ -18,6 +18,18 @@ export const metadata: Metadata = {
   title: "Vibrez status",
   description: "Private read-only status board for Vibrez work.",
   robots: { index: false, follow: false },
+  appleWebApp: { capable: true, title: "Vibrez", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "oklch(0.965 0.012 95)" },
+    { media: "(prefers-color-scheme: dark)", color: "oklch(0.2 0.012 75)" },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

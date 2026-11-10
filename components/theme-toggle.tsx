@@ -1,5 +1,6 @@
 "use client";
 
+import { SunMoon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const STORAGE_KEY = "vibrez-theme";
@@ -21,11 +22,12 @@ export function ThemeToggle() {
     <Button
       type="button"
       variant="outline"
-      className="h-11 px-3"
+      className="size-11 p-0 sm:w-auto sm:px-3"
       onClick={toggle}
       aria-label="Switch colour theme"
     >
-      Theme
+      <SunMoon className="size-5" aria-hidden="true" />
+      <span className="hidden sm:inline">Theme</span>
     </Button>
   );
 }
