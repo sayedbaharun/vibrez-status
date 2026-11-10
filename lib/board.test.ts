@@ -8,6 +8,8 @@ const NOW = new Date("2026-11-09T12:00:00Z");
 
 function issue(partial: Partial<Issue> & Pick<Issue, "id" | "identifier">): Issue {
   return {
+    teamKey: "VIB",
+    createdAt: "2026-11-01T12:00:00.000Z",
     title: partial.identifier,
     url: `https://linear.app/vibrezhq/issue/${partial.identifier}`,
     priority: 3,
@@ -44,6 +46,7 @@ describe("deriveBoard", () => {
   const projects: Project[] = [
     {
       id: "site",
+      teamKey: "VIB",
       name: "Vibrez site",
       progress: 0.64,
       state: "started",
@@ -51,6 +54,7 @@ describe("deriveBoard", () => {
     },
     {
       id: "done",
+      teamKey: "VIB",
       name: "Brand archive",
       progress: 1,
       state: "completed",
@@ -58,6 +62,7 @@ describe("deriveBoard", () => {
     },
     {
       id: "drop",
+      teamKey: "VIB",
       name: "Canceled pitch",
       progress: 0.2,
       state: "canceled",
@@ -65,6 +70,7 @@ describe("deriveBoard", () => {
     },
     {
       id: "ops",
+      teamKey: "VIB",
       name: "Internal ops",
       progress: null,
       state: "started",
@@ -320,6 +326,8 @@ describe("sample data and mode", () => {
     expect(board.timeline.length).toBeGreaterThan(0);
     expect(board.done.length).toBeGreaterThan(0);
     expect(board.counts.overdue).toBeGreaterThan(0);
+    expect(sample.issues.some((item) => item.teamKey === "PER")).toBe(true);
+    expect(sample.projects.some((project) => project.teamKey === "PER")).toBe(true);
   });
 
   it("prefers mock mode, then a real key, then a setup state", () => {

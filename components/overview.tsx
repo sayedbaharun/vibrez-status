@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { formatLondonDay } from "@/lib/dates";
 import type { BoardModel } from "@/lib/types";
-import { EmptyNote, IssueList } from "./issue-list";
+import { EmptyNote, IssueList, TeamTag } from "./issue-list";
 
 const STATS = [
   { key: "open", label: "Open" },
@@ -10,7 +10,15 @@ const STATS = [
   { key: "doneLast7Days", label: "Done in 7 days" },
 ] as const;
 
-export function Overview({ board }: { board: BoardModel }) {
+export function Overview({
+  board,
+  scopeText,
+  showTeam = false,
+}: {
+  board: BoardModel;
+  scopeText: string;
+  showTeam?: boolean;
+}) {
   const maxStatus = board.byStatus[0]?.count ?? 1;
 
   return (
@@ -18,7 +26,7 @@ export function Overview({ board }: { board: BoardModel }) {
       <div>
         <h2 className="font-serif text-2xl tracking-tight">Overview</h2>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">
-          Open work on team VIB. This week is Monday to Sunday, London time. Overdue means a due
+          Open work on {scopeText}. This week is Monday to Sunday, London time. Overdue means a due
           date before today and the issue is still open.
         </p>
       </div>
@@ -71,13 +79,16 @@ export function Overview({ board }: { board: BoardModel }) {
           Projects
         </h3>
         {board.projects.length === 0 ? (
-          <EmptyNote>No projects on this team.</EmptyNote>
+          <EmptyNote>No projects in this scope.</EmptyNote>
         ) : (
           <ul className="space-y-4">
             {board.projects.map((project) => (
               <li key={project.id}>
                 <div className="mb-1 flex items-baseline justify-between gap-3">
-                  <p className="text-sm font-medium">{project.name}</p>
+                  <p className="flex min-w-0 items-baseline gap-2 text-sm font-medium">
+                    <span>{project.name}</span>
+                    {showTeam ? <TeamTag teamKey={project.teamKey} /> : null}
+                  </p>
                   <p className="text-sm text-muted-foreground tabular-nums">
                     {project.percent == null ? "No progress" : `${project.percent}%`}
                   </p>
@@ -112,7 +123,7 @@ export function Overview({ board }: { board: BoardModel }) {
         {board.overdueIssues.length === 0 ? (
           <EmptyNote>Nothing is past its due date.</EmptyNote>
         ) : (
-          <IssueList issues={board.overdueIssues} />
+          <IssueList issues={board.overdueIssues} showTeam={showTeam} />
         )}
       </section>
     </div>

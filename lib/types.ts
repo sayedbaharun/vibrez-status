@@ -3,8 +3,11 @@ export type Label = {
   color: string | null;
 };
 
+export type TeamKey = "VIB" | "PER";
+
 export type Issue = {
   id: string;
+  teamKey: TeamKey;
   identifier: string;
   title: string;
   url: string;
@@ -12,6 +15,7 @@ export type Issue = {
   priorityLabel: string;
   dueDate: string | null;
   completedAt: string | null;
+  createdAt: string;
   updatedAt: string;
   assignee: string | null;
   stateName: string;
@@ -24,6 +28,7 @@ export type Issue = {
 
 export type Project = {
   id: string;
+  teamKey: TeamKey;
   name: string;
   progress: number | null;
   state: string | null;
@@ -42,6 +47,7 @@ export type StatusCount = {
 
 export type ProjectProgress = {
   id: string;
+  teamKey: TeamKey;
   name: string;
   percent: number | null;
   state: string | null;

@@ -1,6 +1,8 @@
 # Vibrez status
 
-A private, read-only board for Sayed Baharun. Open it on a phone or laptop to see where Vibrez work stands: counts, what needs Sayed, what an agent can finish, blocked and review work, the next 14 days, and what was completed recently.
+A private, read-only board for Sayed Baharun. Open it on a phone or laptop to see where Vibrez and personal work stands: counts, what needs Sayed, what an agent can finish, blocked and review work, the next 14 days, and what was completed recently. A health panel at the top says whether the machinery is working.
+
+**This board shows personal items (team PER).** It must stay Sayed-only and behind the password gate. Never share the password or turn the gate off.
 
 Times use **Europe/London**. The board does not send analytics.
 
@@ -44,9 +46,29 @@ Vercel Deployment Protection is optional. This app already refuses unauthenticat
 
 ### Linear key
 
-Create a personal API key in Linear (**Settings → Account → Security & access**). The key must be able to see the VibrezHq workspace. The board loads team **VIB**: open issues, issues completed in roughly the last two weeks (then keeps the last 7 London days), and that team’s projects. Any workflow state whose type is `completed` counts as done, including **Accepted**.
+Create a personal API key in Linear (**Settings → Account → Security & access**). The key must be able to see the VibrezHq workspace. The board loads teams **VIB** (Vibrez) and **PER** (Personal): open issues including Triage, issues completed in roughly the last two weeks (then keeps the last 7 London days), both teams’ projects, and any open issue titled “Triage sweep has failed” from any team. Any workflow state whose type is `completed` counts as done, including **Accepted**.
 
 Labels are matched loosely: `needs-sayed`, `Needs Sayed`, and `needs_sayed` are the same. The Needs Sayed view also includes `human-only`. Agents are `agent-can-finish`. Blocked / Needs Review is a status name containing “blocked”, or exactly “Needs Review”.
+
+## Scope
+
+The switch under the header picks **All · Vibrez · Personal** (default All). It is kept in the URL (`?scope=personal`, `?scope=vibrez`), so it survives a refresh and works with every tab. In All, each issue row and project carries a small team tag. The health panel always covers both teams.
+
+## Health panel
+
+“Is it working?” sits at the top of every tab. When everything is fine it is one green line, **All systems OK**. When anything needs a look it opens and lists each check with a coloured dot and a word (OK, Check, Problem). All checks come from Linear data (`lib/health.ts`; thresholds are named constants there):
+
+| Check | OK | Check (amber) / Problem (red) |
+| --- | --- | --- |
+| Linear data | Data loaded | Problem: the fetch failed, with the reason |
+| Triage sweep | No VIB triage issue older than 45 min | Problem: the oldest VIB triage issue has waited over 45 min |
+| Sweep alarm | No open “Triage sweep has failed” issue | Problem: one is open, linked |
+| Overdue | Nothing open past its due date (London) | Check: count and identifiers, both teams |
+| Stuck in review | Nothing in Needs Review / In Review untouched over 3 days | Check: count and identifiers |
+| Blocked | Always OK; shows how many are blocked | — |
+| Personal triage | No PER triage issue older than 2 days | Check: filed but not sorted |
+
+Times are measured against when the data was fetched, so a cached board can be up to about five minutes behind.
 
 ## Bot updates
 

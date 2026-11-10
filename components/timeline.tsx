@@ -2,7 +2,15 @@ import { addCalendarDays, formatLondonDay, londonDate } from "@/lib/dates";
 import type { TimelineDay } from "@/lib/types";
 import { EmptyNote, IssueList } from "./issue-list";
 
-export function Timeline({ days, now }: { days: TimelineDay[]; now: string }) {
+export function Timeline({
+  days,
+  now,
+  showTeam = false,
+}: {
+  days: TimelineDay[];
+  now: string;
+  showTeam?: boolean;
+}) {
   const today = londonDate(new Date(now));
   const tomorrow = addCalendarDays(today, 1);
 
@@ -25,7 +33,7 @@ export function Timeline({ days, now }: { days: TimelineDay[]; now: string }) {
                 {day.date === today ? "Today · " : day.date === tomorrow ? "Tomorrow · " : ""}
                 {formatLondonDay(day.date)}
               </h3>
-              <IssueList issues={day.issues} />
+              <IssueList issues={day.issues} showTeam={showTeam} />
             </section>
           ))}
         </div>

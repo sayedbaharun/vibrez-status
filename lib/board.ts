@@ -21,7 +21,7 @@ export function isBlockedOrReview(stateName: string): boolean {
   return name.includes("blocked") || name === "needs review";
 }
 
-function isOpen(issue: Issue): boolean {
+export function isOpen(issue: Issue): boolean {
   return issue.stateType !== "completed" && issue.stateType !== "canceled";
 }
 
@@ -131,12 +131,14 @@ export function deriveBoard(issues: Issue[], projects: Project[], now: Date): Bo
     .filter((project) => project.state !== "canceled")
     .map((project) => ({
       id: project.id,
+      teamKey: project.teamKey,
       name: project.name,
       percent: toPercent(project.progress),
       state: project.state,
       targetDate: project.targetDate,
     }))
     .sort((a, b) => {
+      if (a.teamKey !== b.teamKey) return a.teamKey === "VIB" ? -1 : 1;
       const aDone = a.state === "completed" ? 1 : 0;
       const bDone = b.state === "completed" ? 1 : 0;
       if (aDone !== bDone) return aDone - bDone;

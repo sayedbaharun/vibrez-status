@@ -1,11 +1,11 @@
 import { addCalendarDays, londonDate } from "./dates";
-import type { Issue, Project } from "./types";
+import type { Issue, Project, TeamKey } from "./types";
 
 export type SampleBundle = {
   sample: true;
   workspaceName: string;
   workspaceKey: string;
-  teamName: string;
+  teamNames: string[];
   issues: Issue[];
   projects: Project[];
 };
@@ -15,6 +15,8 @@ function issue(
   partial: Pick<Issue, "id" | "identifier" | "title"> & Partial<Issue>,
 ): Issue {
   return {
+    teamKey: partial.identifier.split("-")[0] as TeamKey,
+    createdAt: `${addCalendarDays(today, -10)}T09:00:00.000Z`,
     url: `https://linear.app/vibrezhq/issue/${partial.identifier}`,
     priority: 3,
     priorityLabel: "Medium",
@@ -36,10 +38,12 @@ export function createSample(now: Date): SampleBundle {
   const today = londonDate(now);
   const due = (offset: number) => addCalendarDays(today, offset);
   const at = (offset: number) => `${due(offset)}T12:00:00.000Z`;
+  const minutesAgo = (minutes: number) => new Date(now.getTime() - minutes * 60_000).toISOString();
 
   const projects: Project[] = [
     {
       id: "site",
+      teamKey: "VIB",
       name: "Vibrez site",
       progress: 0.58,
       state: "started",
@@ -47,6 +51,7 @@ export function createSample(now: Date): SampleBundle {
     },
     {
       id: "clients",
+      teamKey: "VIB",
       name: "Client delivery",
       progress: 0.27,
       state: "started",
@@ -54,6 +59,7 @@ export function createSample(now: Date): SampleBundle {
     },
     {
       id: "ops",
+      teamKey: "VIB",
       name: "Internal ops",
       progress: 0.74,
       state: "started",
@@ -61,10 +67,35 @@ export function createSample(now: Date): SampleBundle {
     },
     {
       id: "archive",
+      teamKey: "VIB",
       name: "Brand archive",
       progress: 1,
       state: "completed",
       targetDate: due(-20),
+    },
+    {
+      id: "life",
+      teamKey: "PER",
+      name: "Life & Admin",
+      progress: 0.4,
+      state: "started",
+      targetDate: null,
+    },
+    {
+      id: "health",
+      teamKey: "PER",
+      name: "Health",
+      progress: 0.65,
+      state: "started",
+      targetDate: due(30),
+    },
+    {
+      id: "systems",
+      teamKey: "PER",
+      name: "Systems",
+      progress: 0.2,
+      state: "started",
+      targetDate: null,
     },
   ];
 
@@ -279,13 +310,106 @@ export function createSample(now: Date): SampleBundle {
       stateType: "canceled",
       dueDate: due(-4),
     }),
+    issue(today, {
+      id: "s17",
+      identifier: "VIB-240",
+      title: "New request from the inbox",
+      priority: 0,
+      priorityLabel: "No priority",
+      stateName: "Triage",
+      stateType: "triage",
+      stateColor: "#c4a15a",
+      createdAt: minutesAgo(10),
+      updatedAt: minutesAgo(10),
+    }),
+    issue(today, {
+      id: "p1",
+      identifier: "PER-12",
+      title: "Renew the car insurance",
+      priority: 2,
+      priorityLabel: "High",
+      dueDate: due(1),
+      assignee: "Sayed Baharun",
+      labels: [{ name: "human-only", color: "#8a5a12" }],
+      projectId: "life",
+      projectName: "Life & Admin",
+    }),
+    issue(today, {
+      id: "p2",
+      identifier: "PER-9",
+      title: "Book the annual blood test",
+      priority: 3,
+      priorityLabel: "Medium",
+      dueDate: due(5),
+      assignee: "Sayed Baharun",
+      stateName: "In Progress",
+      stateType: "started",
+      stateColor: "#3d8b84",
+      labels: [{ name: "needs-sayed", color: "#c4554a" }],
+      projectId: "health",
+      projectName: "Health",
+    }),
+    issue(today, {
+      id: "p3",
+      identifier: "PER-15",
+      title: "Tidy the backup scripts",
+      priority: 4,
+      priorityLabel: "Low",
+      dueDate: due(8),
+      assignee: "Home agent",
+      stateName: "In Review",
+      stateType: "started",
+      stateColor: "#c4a15a",
+      labels: [{ name: "agent-can-finish", color: "#1f6f68" }],
+      projectId: "systems",
+      projectName: "Systems",
+    }),
+    issue(today, {
+      id: "p4",
+      identifier: "PER-7",
+      title: "Waiting on the tax letter",
+      priority: 3,
+      priorityLabel: "Medium",
+      stateName: "Blocked",
+      stateType: "started",
+      stateColor: "#c4554a",
+      projectId: "life",
+      projectName: "Life & Admin",
+    }),
+    issue(today, {
+      id: "p5",
+      identifier: "PER-18",
+      title: "Idea: a better morning routine",
+      priority: 0,
+      priorityLabel: "No priority",
+      stateName: "Triage",
+      stateType: "triage",
+      stateColor: "#c4a15a",
+      createdAt: minutesAgo(60 * 20),
+      updatedAt: minutesAgo(60 * 20),
+    }),
+    issue(today, {
+      id: "p6",
+      identifier: "PER-5",
+      title: "Cancel the old gym membership",
+      priority: 3,
+      priorityLabel: "Medium",
+      assignee: "Sayed Baharun",
+      stateName: "Done",
+      stateType: "completed",
+      stateColor: "#3d8b5f",
+      completedAt: at(-1),
+      updatedAt: at(-1),
+      projectId: "life",
+      projectName: "Life & Admin",
+    }),
   ];
 
   return {
     sample: true,
     workspaceName: "Vibrez (sample)",
     workspaceKey: "vibrezhq",
-    teamName: "Vibrez",
+    teamNames: ["Vibrez", "Personal"],
     issues,
     projects,
   };

@@ -3,11 +3,15 @@ import { logout, refreshBoard } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { deriveBoard } from "@/lib/board";
 import { formatLondonStamp } from "@/lib/dates";
+import { buildHealth, type HealthCheck } from "@/lib/health";
 import type { BoardLoad } from "@/lib/linear";
 import type { BoardIssue, BoardModel } from "@/lib/types";
 import type { BotUpdate } from "@/lib/updates";
+import { SCOPES, boardHref, filterByScope, type ScopeId } from "@/lib/scope";
 import { VIEWS, type ViewId } from "@/lib/views";
+import { HealthPanel } from "./health-panel";
 import { EmptyNote, IssueList } from "./issue-list";
 import { Overview } from "./overview";
 import { LogOut } from "lucide-react";
@@ -17,16 +21,42 @@ import { ThemeToggle } from "./theme-toggle";
 import { Timeline } from "./timeline";
 import { UpdatesFeed } from "./updates-feed";
 
+const SCOPE_TEXT: Record<ScopeId, string> = {
+  all: "teams VIB and PER",
+  vibrez: "team VIB (Vibrez)",
+  personal: "team PER (Personal)",
+};
+
+function healthFor(load: BoardLoad): HealthCheck[] {
+  const now = new Date(load.fetchedAt);
+  if (load.kind === "ready") {
+    return buildHealth({ ok: true, issues: [...load.issues, ...load.alarms] }, now);
+  }
+  if (load.kind === "error") return buildHealth({ ok: false, error: load.message }, now);
+  return buildHealth({ ok: false, error: "LINEAR_API_KEY is not set on the server." }, now);
+}
+
 export function StatusBoard({
   view,
+  scope,
   load,
   updates,
 }: {
   view: ViewId;
+  scope: ScopeId;
   load: BoardLoad;
   updates: BotUpdate[];
 }) {
-  const board = load.kind === "ready" ? load.board : null;
+  const board =
+    load.kind === "ready"
+      ? deriveBoard(
+          filterByScope(load.issues, scope),
+          filterByScope(load.projects, scope),
+          new Date(load.fetchedAt),
+        )
+      : null;
+  const showTeam = scope === "all";
+  const health = healthFor(load);
 
   return (
     <div className="min-h-dvh">
@@ -82,6 +112,25 @@ export function StatusBoard({
               ) : null}
             </p>
           ) : null}
+          <nav aria-label="Scope" className="flex gap-1 self-start rounded-full bg-secondary p-1">
+            {SCOPES.map((item) => {
+              const current = item.id === scope;
+              return (
+                <Link
+                  key={item.id}
+                  href={boardHref(view, item.id)}
+                  aria-current={current ? "page" : undefined}
+                  className={
+                    current
+                      ? "inline-flex h-9 items-center rounded-full bg-card px-3 text-sm font-medium text-foreground shadow-sm"
+                      : "inline-flex h-9 items-center rounded-full px-3 text-sm text-secondary-foreground"
+                  }
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
       </header>
 
@@ -94,7 +143,7 @@ export function StatusBoard({
               return (
                 <Link
                   key={item.id}
-                  href={item.id === "overview" ? "/" : `/?view=${item.id}`}
+                  href={boardHref(item.id, scope)}
                   aria-current={current ? "page" : undefined}
                   className={
                     current
@@ -112,6 +161,7 @@ export function StatusBoard({
       </div>
 
       <main id="board" className="safe-x safe-bottom mx-auto max-w-3xl pt-6">
+        <HealthPanel checks={health} />
         {load.kind === "ready" && load.sample ? (
           <p
             role="status"
@@ -127,7 +177,7 @@ export function StatusBoard({
         ) : null}
         {load.kind === "ready" && load.truncated ? (
           <p className="mb-4 text-sm text-muted-foreground">
-            Showing the first 400 matching issues.
+            Showing the first {load.issueLimit} matching issues.
           </p>
         ) : null}
 
@@ -137,37 +187,41 @@ export function StatusBoard({
           <ConnectionMessage kind="unconfigured" />
         ) : load.kind === "error" ? (
           <ConnectionMessage kind="error" message={load.message} />
-        ) : view === "overview" ? (
-          <Overview board={load.board} />
+        ) : !board ? null : view === "overview" ? (
+          <Overview board={board} scopeText={SCOPE_TEXT[scope]} showTeam={showTeam} />
         ) : view === "sayed" ? (
           <IssueSection
             title="Needs Sayed"
             hint="Open issues labelled needs-sayed or human-only, soonest due date first. Overdue rows are marked."
             empty="Nothing is waiting on Sayed."
-            issues={load.board.needsSayed}
+            showTeam={showTeam}
+            issues={board.needsSayed}
           />
         ) : view === "agents" ? (
           <IssueSection
             title="Agents can finish"
             hint="Open issues labelled agent-can-finish, with their current status."
             empty="No open issues are labelled agent-can-finish."
-            issues={load.board.agents}
+            showTeam={showTeam}
+            issues={board.agents}
           />
         ) : view === "blocked" ? (
           <IssueSection
             title="Blocked / Needs Review"
             hint="Issues whose status is blocked, or exactly Needs Review."
             empty="Nothing is blocked or in Needs Review."
-            issues={load.board.blocked}
+            showTeam={showTeam}
+            issues={board.blocked}
           />
         ) : view === "timeline" ? (
-          <Timeline days={load.board.timeline} now={load.fetchedAt} />
+          <Timeline days={board.timeline} now={load.fetchedAt} showTeam={showTeam} />
         ) : (
           <IssueSection
             title="Recently done"
             hint="Completed in the last 7 London days. Accepted counts, and so does any other state of type completed."
             empty="Nothing was completed in the last 7 days."
-            issues={load.board.done}
+            showTeam={showTeam}
+            issues={board.done}
           />
         )}
       </main>
@@ -189,11 +243,13 @@ function IssueSection({
   hint,
   empty,
   issues,
+  showTeam,
 }: {
   title: string;
   hint: string;
   empty: string;
   issues: BoardIssue[];
+  showTeam: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -201,7 +257,7 @@ function IssueSection({
         <h2 className="font-serif text-2xl tracking-tight">{title}</h2>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">{hint}</p>
       </div>
-      {issues.length === 0 ? <EmptyNote>{empty}</EmptyNote> : <IssueList issues={issues} />}
+      {issues.length === 0 ? <EmptyNote>{empty}</EmptyNote> : <IssueList issues={issues} showTeam={showTeam} />}
     </div>
   );
 }
@@ -220,7 +276,7 @@ function ConnectionMessage({
           <CardTitle>Linear is not connected</CardTitle>
           <CardDescription>
             Set LINEAR_API_KEY on the server to a Linear personal API key that can read the
-            VibrezHq workspace, team VIB. The key stays on the server and is never sent to the
+            VibrezHq workspace, teams VIB and PER. The key stays on the server and is never sent to the
             browser.
           </CardDescription>
         </CardHeader>

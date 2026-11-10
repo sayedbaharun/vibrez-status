@@ -1,21 +1,51 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { deriveBoard } from "./board";
-import type { BoardModel } from "./types";
-import type { Issue, Project } from "./types";
+import type { Issue, Project, TeamKey } from "./types";
 import { resolveLinearMode } from "./mode";
 import { createSample } from "./sample";
 
 const ENDPOINT = "https://api.linear.app/graphql";
 const PAGE_SIZE = 50;
-const MAX_PAGES = 8;
+const MAX_PAGES = 12;
+export const TEAM_KEYS: TeamKey[] = ["VIB", "PER"];
 
+const ISSUE_FIELDS = `
+  id
+  identifier
+  title
+  url
+  priority
+  priorityLabel
+  dueDate
+  completedAt
+  createdAt
+  updatedAt
+  team { key }
+  assignee { name }
+  state { name type color }
+  labels { nodes { name color } }
+  project { id name }
+`;
+
+// One request per page. Workspace, teams, projects and the sweep alarm only load on the
+// first page ($first), so later pages carry issues only.
 const QUERY = `
-  query Board($cursor: String) {
-    organization {
+  query Board($cursor: String, $first: Boolean!) {
+    organization @include(if: $first) {
       name
       urlKey
     }
-    teams(filter: { key: { eq: "VIB" } }) {
+    alarms: issues(
+      first: 10
+      filter: {
+        title: { containsIgnoreCase: "Triage sweep has failed" }
+        state: { type: { nin: ["completed", "canceled"] } }
+      }
+    ) @include(if: $first) {
+      nodes {
+        ${ISSUE_FIELDS}
+      }
+    }
+    teams(filter: { key: { in: ["VIB", "PER"] } }) @include(if: $first) {
       nodes {
         id
         name
@@ -35,7 +65,7 @@ const QUERY = `
       first: ${PAGE_SIZE}
       after: $cursor
       filter: {
-        team: { key: { eq: "VIB" } }
+        team: { key: { in: ["VIB", "PER"] } }
         or: [
           { state: { type: { in: ["triage", "backlog", "unstarted", "started"] } } }
           { state: { type: { eq: "completed" } }, completedAt: { gte: "-P14D" } }
@@ -48,19 +78,7 @@ const QUERY = `
         endCursor
       }
       nodes {
-        id
-        identifier
-        title
-        url
-        priority
-        priorityLabel
-        dueDate
-        completedAt
-        updatedAt
-        assignee { name }
-        state { name type color }
-        labels { nodes { name color } }
-        project { id name }
+        ${ISSUE_FIELDS}
       }
     }
   }
@@ -71,11 +89,15 @@ export type ReadyBoard = {
   sample: boolean;
   workspaceName: string | null;
   workspaceKey: string | null;
-  teamName: string | null;
+  teamNames: string[];
   warning: string | null;
   fetchedAt: string;
   truncated: boolean;
-  board: BoardModel;
+  issueLimit: number;
+  issues: Issue[];
+  /** Open sweep-alarm issues not already in `issues` (for example, filed in another team). */
+  alarms: Issue[];
+  projects: Project[];
 };
 
 export type BoardLoad =
@@ -93,7 +115,9 @@ type RawIssue = {
   priorityLabel?: string | null;
   dueDate?: string | null;
   completedAt?: string | null;
+  createdAt?: string | null;
   updatedAt?: string | null;
+  team?: { key?: string | null } | null;
   assignee?: { name?: string | null } | null;
   state?: { name?: string | null; type?: string | null; color?: string | null } | null;
   labels?: { nodes?: RawLabel[] | null } | null;
@@ -111,6 +135,7 @@ type RawProject = {
 type GqlPayload = {
   data?: {
     organization?: { name?: string | null; urlKey?: string | null } | null;
+    alarms?: { nodes?: RawIssue[] } | null;
     teams?: {
       nodes?: {
         name?: string | null;
@@ -138,11 +163,18 @@ function cleanMessage(message: string): string {
   return message.replace(/lin_api_[A-Za-z0-9_]+/g, "[redacted]").slice(0, 280);
 }
 
-function mapIssue(node: RawIssue): Issue | null {
+function teamKeyOf(key: string | null | undefined): TeamKey | null {
+  return key === "VIB" || key === "PER" ? key : null;
+}
+
+function mapIssue(node: RawIssue, fallbackTeam?: TeamKey): Issue | null {
   if (!node.id || !node.identifier) return null;
+  const teamKey = teamKeyOf(node.team?.key ?? node.identifier.split("-")[0]) ?? fallbackTeam;
+  if (!teamKey) return null;
   const priority = typeof node.priority === "number" ? node.priority : 0;
   return {
     id: node.id,
+    teamKey,
     identifier: node.identifier,
     title: node.title?.trim() || node.identifier,
     url: node.url || `https://linear.app/issue/${node.identifier}`,
@@ -150,6 +182,7 @@ function mapIssue(node: RawIssue): Issue | null {
     priorityLabel: node.priorityLabel?.trim() || PRIORITY_LABELS[priority] || "No priority",
     dueDate: node.dueDate ? node.dueDate.slice(0, 10) : null,
     completedAt: node.completedAt ?? null,
+    createdAt: node.createdAt ?? node.updatedAt ?? new Date(0).toISOString(),
     updatedAt: node.updatedAt ?? new Date(0).toISOString(),
     assignee: node.assignee?.name ?? null,
     stateName: node.state?.name ?? "Unknown",
@@ -163,10 +196,11 @@ function mapIssue(node: RawIssue): Issue | null {
   };
 }
 
-function mapProject(node: RawProject): Project | null {
+function mapProject(node: RawProject, teamKey: TeamKey): Project | null {
   if (!node.id || !node.name) return null;
   return {
     id: node.id,
+    teamKey,
     name: node.name,
     progress: typeof node.progress === "number" ? node.progress : null,
     state: node.state ?? null,
@@ -183,7 +217,7 @@ async function linearRequest(key: string, cursor: string | null): Promise<GqlPay
         "Content-Type": "application/json",
         Authorization: key,
       },
-      body: JSON.stringify({ query: QUERY, variables: { cursor } }),
+      body: JSON.stringify({ query: QUERY, variables: { cursor, first: cursor === null } }),
       cache: "no-store",
       signal: AbortSignal.timeout(20_000),
     });
@@ -223,11 +257,13 @@ async function fetchLive(now: Date): Promise<BoardLoad> {
 
   try {
     const issues: Issue[] = [];
+    const alarms: Issue[] = [];
     const seen = new Set<string>();
-    let projects: Project[] = [];
+    const projects: Project[] = [];
+    const teamNames: string[] = [];
+    const foundTeams = new Set<TeamKey>();
     let workspaceName: string | null = null;
     let workspaceKey: string | null = null;
-    let teamName: string | null = null;
     let cursor: string | null = null;
     let truncated = false;
 
@@ -239,19 +275,33 @@ async function fetchLive(now: Date): Promise<BoardLoad> {
       if (page === 0) {
         workspaceName = data.organization?.name ?? null;
         workspaceKey = data.organization?.urlKey ?? null;
-        const team = data.teams?.nodes?.[0];
-        if (!team) {
+        const projectIds = new Set<string>();
+        for (const keyName of TEAM_KEYS) {
+          const team = data.teams?.nodes?.find((node) => node.key === keyName);
+          if (!team) continue;
+          foundTeams.add(keyName);
+          teamNames.push(team.name ?? keyName);
+          for (const node of team.projects?.nodes ?? []) {
+            const mapped = mapProject(node, keyName);
+            // A project shared by both teams is listed once, under the first team.
+            if (!mapped || projectIds.has(mapped.id)) continue;
+            projectIds.add(mapped.id);
+            projects.push(mapped);
+          }
+        }
+        if (foundTeams.size === 0) {
           return {
             kind: "error",
             fetchedAt: now.toISOString(),
             message:
-              "No Linear team with key VIB was returned. Confirm the personal API key can access the VibrezHq workspace.",
+              "No Linear team with key VIB or PER was returned. Confirm the personal API key can access the VibrezHq workspace.",
           };
         }
-        teamName = team.name ?? "Vibrez";
-        projects = (team.projects?.nodes ?? [])
-          .map(mapProject)
-          .filter((project): project is Project => project !== null);
+        for (const node of data.alarms?.nodes ?? []) {
+          // An alarm filed in another team still counts; tag it VIB so the health panel sees it.
+          const mapped = mapIssue(node, "VIB");
+          if (mapped) alarms.push(mapped);
+        }
       }
 
       for (const node of data.issues?.nodes ?? []) {
@@ -270,9 +320,15 @@ async function fetchLive(now: Date): Promise<BoardLoad> {
       truncated = page === MAX_PAGES - 1;
     }
 
-    let warning: string | null = null;
+    const warnings: string[] = [];
     if (workspaceKey && !workspaceKey.toLowerCase().includes("vibrez")) {
-      warning = `This key returned the “${workspaceName ?? workspaceKey}” workspace (${workspaceKey}). The board still filters to team VIB.`;
+      warnings.push(
+        `This key returned the “${workspaceName ?? workspaceKey}” workspace (${workspaceKey}). The board still filters to teams VIB and PER.`,
+      );
+    }
+    const missing = TEAM_KEYS.filter((teamKey) => !foundTeams.has(teamKey));
+    if (missing.length > 0) {
+      warnings.push(`Team ${missing.join(" and ")} was not returned, so it is not shown.`);
     }
 
     return {
@@ -280,11 +336,14 @@ async function fetchLive(now: Date): Promise<BoardLoad> {
       sample: false,
       workspaceName,
       workspaceKey,
-      teamName,
-      warning,
+      teamNames,
+      warning: warnings.length > 0 ? warnings.join(" ") : null,
       fetchedAt: now.toISOString(),
       truncated,
-      board: deriveBoard(issues, projects, now),
+      issueLimit: PAGE_SIZE * MAX_PAGES,
+      issues,
+      alarms: alarms.filter((alarm) => !seen.has(alarm.id)),
+      projects,
     };
   } catch (error) {
     const message = error instanceof Error ? cleanMessage(error.message) : "Linear request failed.";
@@ -305,11 +364,14 @@ async function loadCached(mode: "mock" | "live"): Promise<BoardLoad> {
       sample: true,
       workspaceName: sample.workspaceName,
       workspaceKey: sample.workspaceKey,
-      teamName: sample.teamName,
+      teamNames: sample.teamNames,
       warning: null,
       fetchedAt: now.toISOString(),
       truncated: false,
-      board: deriveBoard(sample.issues, sample.projects, now),
+      issueLimit: PAGE_SIZE * MAX_PAGES,
+      issues: sample.issues,
+      alarms: [],
+      projects: sample.projects,
     };
   }
 
