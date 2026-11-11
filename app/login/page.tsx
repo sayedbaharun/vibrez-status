@@ -34,7 +34,7 @@ async function LoginForm({
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center safe-x py-10">
       <div className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-serif text-4xl tracking-tight">Vibrez</h1>
+          <h1 className="font-serif text-4xl tracking-tight">SB: Today</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             Private status for Sayed Baharun. The board is read-only and not public.
           </p>

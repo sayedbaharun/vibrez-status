@@ -15,10 +15,10 @@ const serif = Newsreader({
 const themeBoot = `(function(){try{var s=localStorage.getItem("vibrez-theme");var dark=s==="dark"||(s!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.dataset.theme=dark?"dark":"light";document.documentElement.classList.toggle("dark",dark);document.documentElement.style.colorScheme=dark?"dark":"light";}catch(e){}})();`;
 
 export const metadata: Metadata = {
-  title: "Vibrez status",
-  description: "Private read-only status board for Vibrez work.",
+  title: "SB: Today",
+  description: "Private read-only status board for SB: Vibrez and personal, from Linear.",
   robots: { index: false, follow: false },
-  appleWebApp: { capable: true, title: "Vibrez", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "SB Today", statusBarStyle: "default" },
   formatDetection: { telephone: false },
 };
 

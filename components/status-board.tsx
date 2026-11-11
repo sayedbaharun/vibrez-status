@@ -70,7 +70,7 @@ export function StatusBoard({
         <div className="flex flex-col gap-2">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="font-serif text-3xl leading-none tracking-tight">Vibrez</h1>
+              <h1 className="font-serif text-3xl leading-none tracking-tight">SB: Today</h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 Status · Europe/London
                 {load.kind === "ready" ? (

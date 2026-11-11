@@ -38,6 +38,7 @@ describe("labels and blocked states", () => {
   it("treats a blocked name or Needs Review as the blocked view", () => {
     expect(isBlockedOrReview("Blocked")).toBe(true);
     expect(isBlockedOrReview("needs review")).toBe(true);
+    expect(isBlockedOrReview("In Review")).toBe(true);
     expect(isBlockedOrReview("In Progress")).toBe(false);
   });
 });

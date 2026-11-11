@@ -32,6 +32,9 @@ function summary(checks: HealthCheck[]): string {
 /** "Is it working?" panel. One line when all is well; open when anything needs a look. */
 export function HealthPanel({ checks }: { checks: HealthCheck[] }) {
   const overall = overallStatus(checks);
+  // Something wrong: show only the problems so the panel stays short on a phone.
+  const shown = overall === "ok" ? checks : checks.filter((check) => check.status !== "ok");
+  const hiddenOk = checks.length - shown.length;
 
   return (
     <details
@@ -45,7 +48,7 @@ export function HealthPanel({ checks }: { checks: HealthCheck[] }) {
         <span className="hidden text-xs text-muted-foreground group-open:inline">Hide</span>
       </summary>
       <ul className="divide-y divide-border border-t border-border">
-        {checks.map((check) => (
+        {shown.map((check) => (
           <li key={check.id} className="flex items-start gap-2 px-3 py-2 text-sm">
             <span className="mt-[0.3rem] flex">
               <Dot status={check.status} />
@@ -79,6 +82,12 @@ export function HealthPanel({ checks }: { checks: HealthCheck[] }) {
             </span>
           </li>
         ))}
+        {hiddenOk > 0 && (
+          <li className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground">
+            <Dot status="ok" />
+            {hiddenOk} other {hiddenOk === 1 ? "check" : "checks"} OK
+          </li>
+        )}
       </ul>
     </details>
   );

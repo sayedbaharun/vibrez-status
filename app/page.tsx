@@ -45,7 +45,7 @@ async function Board({
 function BoardFallback() {
   return (
     <div className="safe-x mx-auto max-w-3xl py-8" aria-busy="true" aria-live="polite">
-      <p className="font-serif text-3xl tracking-tight">Vibrez</p>
+      <p className="font-serif text-3xl tracking-tight">SB: Today</p>
       <p className="mt-2 text-sm text-muted-foreground">Loading the board…</p>
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {["Open", "Overdue", "Due this week", "Done"].map((label) => (

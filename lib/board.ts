@@ -18,7 +18,7 @@ export function isBlockedOrReview(stateName: string): boolean {
     .toLowerCase()
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ");
-  return name.includes("blocked") || name === "needs review";
+  return name.includes("blocked") || name === "needs review" || name === "in review";
 }
 
 export function isOpen(issue: Issue): boolean {
